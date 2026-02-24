@@ -1,0 +1,28 @@
+env:
+  name: "CartPole-v1"
+  wrapper: "CartPoleLogged"
+  obs_dim: 4
+
+agent:
+  type: "dqn"
+  train_episodes: 500
+  lr: 0.001
+  gamma: 0.99
+  epsilon_start: 1.0
+  epsilon_end: 0.01
+  epsilon_decay: 500
+  buffer_size: 10000
+  batch_size: 64
+  target_update_freq: 10
+  hidden: 128
+
+shifts:
+  body:
+    description: "Pole mass drift (theta/theta_dot scaling)"
+    severities: [0.1, 0.3, 0.5]
+  tail:
+    description: "Rare extreme-angle injection (p=0.03)"
+    severities: [1.0, 1.5, 2.0]
+  structure:
+    description: "x-theta correlation broken (noise on x)"
+    severities: [0.3, 0.6, 1.0]

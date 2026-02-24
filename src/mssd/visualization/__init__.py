@@ -1,0 +1,3 @@
+from .heatmaps import plot_orthogonality_heatmap
+from .trajectories import plot_log_wealth_trajectories
+from .comparisons import plot_add_comparison

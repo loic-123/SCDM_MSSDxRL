@@ -1,0 +1,16 @@
+# Minimal smoke test for CI — verifies pipeline works end-to-end
+inherit:
+  - defaults.yaml
+
+experiment:
+  name: "smoke_test"
+  n_trials: 2
+  n_permutations: 20          # Override: fewer perms for speed
+  max_monitoring_steps: 200
+  shift_types: ["body"]
+  include_no_shift: false
+  parallel_workers: 1
+
+envs:
+  - envs/cliffwalking.yaml
+  - envs/cartpole.yaml

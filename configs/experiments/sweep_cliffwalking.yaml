@@ -1,0 +1,13 @@
+# Full experiment sweep for CliffWalking
+inherit:
+  - defaults.yaml
+  - envs/cliffwalking.yaml
+
+experiment:
+  name: "sweep_cliffwalking"
+  n_trials: 50
+  shift_types: ["body", "tail", "structure"]
+  include_no_shift: true
+  n_no_shift_trials: 50
+  parallel_workers: 4
+  output_dir: "artifacts/results/sweep_cliffwalking"

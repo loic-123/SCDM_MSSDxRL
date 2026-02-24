@@ -1,0 +1,22 @@
+env:
+  name: "CliffWalking-v1"
+  wrapper: "CliffWalkingContinuousObs"
+  obs_dim: 3
+
+agent:
+  type: "tabular_q"
+  train_episodes: 5000
+  lr: 0.1
+  gamma: 0.99
+  epsilon: 0.1
+
+shifts:
+  body:
+    description: "Coordinate offset"
+    severities: [0.3, 0.6, 1.0]
+  tail:
+    description: "Hazard state injection (p=0.03)"
+    severities: [1.0, 2.0, 3.0]
+  structure:
+    description: "Feature decorrelation (cliff_distance noise)"
+    severities: [0.5, 1.0, 2.0]
