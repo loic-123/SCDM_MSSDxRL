@@ -13,83 +13,9 @@ from mssd.utils.io import ensure_dir
 from mssd.envs import make_env
 from mssd.envs.shifts import ShiftInjector, ShiftConfig
 from mssd.agents import make_agent
-from mssd.monitor.mssd_monitor import MSSDMonitor
 from mssd.monitor.reference_buffer import ReferenceBuffer
-from mssd.baselines.global_mmd import GlobalMMDBaseline
 from mssd.evaluation.metrics import TrialResult
-
-
-def run_single_trial(
-    env, agent, reference_obs, shift_injector, config, trial_seed
-) -> TrialResult:
-    """Run one trial: deploy agent with monitor, inject shift, record outcome."""
-    set_all_seeds(trial_seed)
-
-    monitor = MSSDMonitor(
-        reference_obs=reference_obs,
-        window_size=config.get("window_size", 50),
-        window_step=config.get("window_step", 10),
-        alpha=config.get("alpha", 0.05),
-        n_permutations=config.get("n_permutations", 200),
-        block_size=config.get("block_size", 10),
-        seed=trial_seed,
-    )
-
-    baseline = GlobalMMDBaseline(
-        reference_obs=reference_obs,
-        window_size=config.get("window_size", 50),
-        window_step=config.get("window_step", 10),
-        alpha=config.get("alpha", 0.05),
-        n_permutations=config.get("n_permutations", 200),
-        block_size=config.get("block_size", 10),
-        seed=trial_seed + 999999,
-    )
-
-    shift_step = config.get("shift_injection_step", 200)
-    max_steps = config.get("max_monitoring_steps", 2000)
-
-    obs, _ = env.reset(seed=trial_seed)
-    step = 0
-
-    while step < max_steps:
-        action = agent.select_action(obs)
-        next_obs, reward, terminated, truncated, _ = env.step(action)
-        done = terminated or truncated
-
-        monitored_obs = next_obs.copy()
-        if step >= shift_step and shift_injector is not None:
-            monitored_obs = shift_injector(next_obs)
-
-        diagnosis = monitor.observe(monitored_obs)
-        baseline.observe(monitored_obs)
-
-        if done:
-            obs, _ = env.reset()
-        else:
-            obs = next_obs
-        step += 1
-
-        if monitor.alarm_fired:
-            break
-
-    mssd_result = monitor.get_result()
-    baseline_result = baseline.get_result()
-
-    return TrialResult(
-        env_name=config["env"]["name"],
-        shift_type=shift_injector.config.shift_type if shift_injector else "none",
-        severity=shift_injector.config.severity if shift_injector else 0.0,
-        trial_id=config.get("trial_id", 0),
-        seed=trial_seed,
-        mssd_alarm_fired=mssd_result.fired,
-        mssd_alarm_step=mssd_result.firing_step,
-        mssd_diagnosed_probe=mssd_result.firing_probe,
-        mssd_log_wealth=mssd_result.log_wealth_history,
-        baseline_alarm_fired=baseline_result.fired,
-        baseline_alarm_step=baseline_result.firing_step,
-        shift_injection_step=shift_step,
-        total_steps=step,
-    )
+from mssd.evaluation.runner import run_single_trial
 
 
 def main():

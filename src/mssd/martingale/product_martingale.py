@@ -17,19 +17,27 @@ class AlarmResult:
 
 
 class ProductMartingale:
-    """Maintains per-probe log-wealth processes and a product martingale.
+    """Maintains per-probe log-wealth processes with Bonferroni correction.
 
     For each probe k, the log-wealth at time t is:
         log(M_t^k) = sum_{i=1}^{t} log(e_i^k)
 
-    An alarm fires when sum_k log(M_t^k) > log(1/alpha).
-    The firing probe is the one with the highest individual log-wealth.
+    An alarm fires when any individual probe's log-wealth exceeds
+    log(K / alpha), where K is the number of probes (Bonferroni correction).
+    The firing probe (diagnosis) is the one with the highest log-wealth.
     """
 
-    def __init__(self, probe_names: List[str], alpha: float = 0.05):
+    def __init__(self, probe_names: List[str], alpha: float = 0.05,
+                 min_probe_steps: int = 1, alarm_probes: List[str] = None):
         self.probe_names = probe_names
         self.alpha = alpha
-        self.threshold = np.log(1.0 / alpha)
+        # alarm_probes: only these probes can trigger the alarm; others are
+        # tracked for log-wealth but only used for post-alarm diagnosis.
+        self.alarm_probes = alarm_probes or probe_names
+        self.n_alarm_probes = len(self.alarm_probes)
+        self.min_probe_steps = min_probe_steps
+        # Bonferroni-corrected threshold over alarm probes only
+        self.threshold = np.log(self.n_alarm_probes / alpha)
 
         self.log_wealth = {name: 0.0 for name in probe_names}
         self.log_wealth_history = {name: [0.0] for name in probe_names}
@@ -51,22 +59,25 @@ class ProductMartingale:
             return True
 
         self._step += 1
-        product_log = 0.0
 
         for name in self.probe_names:
             ev = e_values[name]
             log_ev = np.log(max(ev, 1e-10))
             self.log_wealth[name] += log_ev
             self.log_wealth_history[name].append(self.log_wealth[name])
-            product_log += self.log_wealth[name]
 
-        self.product_log_wealth_history.append(product_log)
+        # Only alarm probes can trigger; others contribute to diagnosis only
+        max_alarm_wealth = max(
+            self.log_wealth[n] for n in self.alarm_probes
+        )
+        self.product_log_wealth_history.append(max_alarm_wealth)
 
-        if product_log > self.threshold:
+        if max_alarm_wealth > self.threshold and self._step >= self.min_probe_steps:
             self._alarm_fired = True
             self._alarm_step = self._step
+            # Diagnosis: probe with highest log-wealth among alarm probes
             self._alarm_probe = max(
-                self.probe_names, key=lambda n: self.log_wealth[n]
+                self.alarm_probes, key=lambda n: self.log_wealth[n]
             )
             return True
 

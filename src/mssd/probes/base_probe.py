@@ -35,11 +35,18 @@ class BaseProbe(ABC):
         n_permutations: int = 200,
         block_size: int = 10,
         rng: np.random.Generator = None,
+        betting_fraction: float = 0.5,
     ) -> float:
         """Convert test statistic to an e-value via block-bootstrap permutation.
 
+        Uses a betting-fraction approach for safe sequential testing:
+            e_safe = betting_fraction * (1/p_hat) + (1 - betting_fraction)
+
+        This preserves the e-value property (E[e] <= 1 under H0) while
+        preventing single-step explosions that cause premature alarms.
+
         Under H0 (no shift), e-values are ~1.
-        Under H1 (shift present), e-values are large.
+        Under H1 (shift present), e-values grow steadily.
         """
         if rng is None:
             rng = np.random.default_rng()
@@ -60,7 +67,8 @@ class BaseProbe(ABC):
                 count_geq += 1
 
         p_hat = (count_geq + 1) / (n_permutations + 1)
-        e_value = 1.0 / p_hat
+        e_raw = 1.0 / p_hat
+        e_value = betting_fraction * e_raw + (1.0 - betting_fraction)
         return e_value
 
 

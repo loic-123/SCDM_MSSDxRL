@@ -3,10 +3,11 @@ seed: 42
 alpha: 0.05                    # Significance level for martingale threshold
 n_permutations: 200            # Block-bootstrap permutations per e-value
 block_size: 10                 # Block bootstrap block size
-window_size: 50                # Observations per test window
-window_step: 10                # Probe evaluation frequency (every N obs)
+window_size: 100               # Observations per test window
+window_step: 25                # Probe evaluation frequency (every N obs)
 max_monitoring_steps: 2000     # Terminate trial if no alarm by this step
-shift_injection_step: 200      # When to start injecting the shift
+shift_injection_step: 500      # When to start injecting the shift
+min_probe_steps: 3             # Minimum probe evaluations before alarm can fire
 n_reference_episodes: 100      # Episodes to collect for reference buffer
 
 device: "auto"                 # PyTorch device ("auto" = cuda if available, else cpu)

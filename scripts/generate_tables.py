@@ -7,8 +7,35 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from scripts.generate_figures import load_results
+from mssd.evaluation.metrics import TrialResult
 from mssd.evaluation.analysis import compute_summary_table
+
+
+def load_results(results_dir: str) -> list:
+    """Load all .npz result files into TrialResult objects."""
+    results = []
+    for npz_path in Path(results_dir).rglob("*.npz"):
+        data = dict(np.load(npz_path, allow_pickle=True))
+        alarm_step = int(data["mssd_alarm_step"])
+        baseline_step = int(data["baseline_alarm_step"])
+        results.append(
+            TrialResult(
+                env_name=str(data["env_name"]),
+                shift_type=str(data["shift_type"]),
+                severity=float(data["severity"]),
+                trial_id=int(data["trial_id"]),
+                seed=int(data["seed"]),
+                mssd_alarm_fired=bool(data["mssd_alarm_fired"]),
+                mssd_alarm_step=alarm_step if alarm_step >= 0 else None,
+                mssd_diagnosed_probe=str(data["mssd_diagnosed_probe"]) if str(data["mssd_diagnosed_probe"]) != "none" else None,
+                mssd_log_wealth={},
+                baseline_alarm_fired=bool(data["baseline_alarm_fired"]),
+                baseline_alarm_step=baseline_step if baseline_step >= 0 else None,
+                shift_injection_step=int(data["shift_injection_step"]),
+                total_steps=int(data["total_steps"]),
+            )
+        )
+    return results
 
 
 def format_add(val: float) -> str:

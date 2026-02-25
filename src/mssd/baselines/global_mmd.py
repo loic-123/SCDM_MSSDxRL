@@ -48,14 +48,15 @@ class GlobalMMDBaseline:
             return self._run_test()
         return False
 
+    def _sample_ref_block(self, size: int) -> np.ndarray:
+        """Sample a consecutive block from the reference buffer."""
+        max_start = max(0, len(self.reference) - size)
+        start = self.rng.integers(0, max_start + 1)
+        return self.reference[start : start + size]
+
     def _run_test(self) -> bool:
         test_window = np.array(self._obs_buffer[-self.window_size :])
-        ref_idx = self.rng.choice(
-            len(self.reference),
-            size=min(self.window_size, len(self.reference)),
-            replace=False,
-        )
-        ref_window = self.reference[ref_idx]
+        ref_window = self._sample_ref_block(self.window_size)
 
         bw = median_heuristic_bandwidth(
             np.concatenate([ref_window, test_window])
@@ -75,7 +76,7 @@ class GlobalMMDBaseline:
                 count_geq += 1
 
         p_hat = (count_geq + 1) / (self.n_permutations + 1)
-        e_value = 1.0 / p_hat
+        e_value = 0.5 * (1.0 / p_hat) + 0.5  # betting fraction
 
         return self.martingale.update({"global_mmd": e_value})
 

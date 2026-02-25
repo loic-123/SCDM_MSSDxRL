@@ -15,7 +15,9 @@ def load_config(config_path: Union[str, Path]) -> dict:
     """
     config_path = Path(config_path)
     if not config_path.is_absolute():
-        config_path = CONFIG_DIR / config_path
+        # Try relative to cwd first, then fall back to CONFIG_DIR
+        if not config_path.exists():
+            config_path = CONFIG_DIR / config_path
 
     with open(config_path) as f:
         config = yaml.safe_load(f) or {}

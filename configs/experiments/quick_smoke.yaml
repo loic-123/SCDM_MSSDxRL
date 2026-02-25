@@ -2,11 +2,12 @@
 inherit:
   - defaults.yaml
 
+shift_injection_step: 200       # Override: inject shift earlier for quick test
+max_monitoring_steps: 1000      # Override: shorter monitoring horizon
+
 experiment:
   name: "smoke_test"
   n_trials: 2
-  n_permutations: 20          # Override: fewer perms for speed
-  max_monitoring_steps: 200
   shift_types: ["body"]
   include_no_shift: false
   parallel_workers: 1

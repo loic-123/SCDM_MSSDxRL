@@ -16,7 +16,7 @@ from mssd.envs import make_env
 from mssd.envs.shifts import ShiftInjector, ShiftConfig
 from mssd.agents import make_agent
 from mssd.monitor.reference_buffer import ReferenceBuffer
-from scripts.run_experiment import run_single_trial
+from mssd.evaluation.runner import run_single_trial
 
 
 def _run_trial_worker(trial_spec: dict, cfg: dict):
@@ -72,11 +72,34 @@ def _run_trial_worker(trial_spec: dict, cfg: dict):
 def main():
     parser = argparse.ArgumentParser(description="Run full experimental sweep")
     parser.add_argument("--config", required=True, help="Path to sweep config YAML")
+    parser.add_argument("--env-config", default=None, help="Path to env config YAML (optional, needed if sweep config has no env/agent)")
     parser.add_argument("--agent", required=True, help="Path to saved agent")
     parser.add_argument("--reference", required=True, help="Path to reference .npz")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+
+    # If env/agent keys are missing, load them from --env-config
+    if "env" not in cfg and args.env_config:
+        env_cfg = load_config(args.env_config)
+        cfg["env"] = env_cfg["env"]
+        cfg["agent"] = env_cfg["agent"]
+        if "shifts" not in cfg and "shifts" in env_cfg:
+            cfg["shifts"] = env_cfg["shifts"]
+    elif "env" not in cfg:
+        # Try to infer env from agent path
+        agent_str = args.agent.lower()
+        if "cliffwalking" in agent_str or "cliff" in agent_str:
+            env_cfg = load_config("envs/cliffwalking.yaml")
+        elif "cartpole" in agent_str:
+            env_cfg = load_config("envs/cartpole.yaml")
+        else:
+            parser.error("Cannot infer environment. Use --env-config to specify the env config.")
+        cfg["env"] = env_cfg["env"]
+        cfg["agent"] = env_cfg["agent"]
+        if "shifts" not in cfg and "shifts" in env_cfg:
+            cfg["shifts"] = env_cfg["shifts"]
+
     exp = cfg.get("experiment", cfg)
 
     base_seed = cfg.get("seed", 42)

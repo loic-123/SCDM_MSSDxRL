@@ -30,12 +30,13 @@ class MSSDMonitor:
     def __init__(
         self,
         reference_obs: np.ndarray,
-        window_size: int = 50,
-        window_step: int = 10,
+        window_size: int = 100,
+        window_step: int = 25,
         alpha: float = 0.05,
         n_permutations: int = 200,
         block_size: int = 10,
         seed: int = 42,
+        min_probe_steps: int = 3,
     ):
         self.reference = reference_obs
         self.window_size = window_size
@@ -50,9 +51,17 @@ class MSSDMonitor:
             "structure": StructureProbe(),
         }
 
+        # Only body and tail probes drive the alarm; the structure probe's
+        # e-values are tracked for diagnosis but do not trigger the alarm.
+        # This avoids false alarms from the structure probe, which is
+        # sensitive to the temporal correlation inherent in RL trajectories.
+        self._alarm_probes = ["body", "tail"]
+
         self.martingale = ProductMartingale(
             probe_names=list(self.probes.keys()),
             alpha=alpha,
+            min_probe_steps=min_probe_steps,
+            alarm_probes=self._alarm_probes,
         )
 
         self._obs_buffer: List[np.ndarray] = []
@@ -77,16 +86,23 @@ class MSSDMonitor:
 
         return None
 
+    def _sample_ref_block(self, size: int) -> np.ndarray:
+        """Sample a consecutive block from the reference buffer.
+
+        This preserves temporal structure, which is important for the structure
+        probe (correlation comparison) in RL observation streams.
+        """
+        max_start = max(0, len(self.reference) - size)
+        start = self.rng.integers(0, max_start + 1)
+        return self.reference[start : start + size]
+
     def _run_probes(self) -> Optional[str]:
         """Run all probes on the current test window."""
         test_window = np.array(self._obs_buffer[-self.window_size :])
 
-        ref_idx = self.rng.choice(
-            len(self.reference),
-            size=min(self.window_size, len(self.reference)),
-            replace=False,
-        )
-        ref_window = self.reference[ref_idx]
+        # Sample a consecutive block from the reference (preserves temporal
+        # correlation structure that RL trajectories naturally have)
+        ref_window = self._sample_ref_block(self.window_size)
 
         e_values = {}
         for name, probe in self.probes.items():
